@@ -8,10 +8,10 @@ import av
 import os
 
 import base64
-#openai_key = st.secrets["OPENAI_KEY"]
-OpenAI.api_key = st.secrets["openai_key"]
 
-#openai = OpenAI(api_key=openai_key)
+#OpenAI.api_key = st.secrets["openai_key"]
+openai_key = st.secrets["openai_key"]
+openai = OpenAI(api_key=openai_key)
 class VideoProcessor:
   def __init__(self):
     self.capture_frame = True
