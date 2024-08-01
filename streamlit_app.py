@@ -1,56 +1,96 @@
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer, RTCConfiguration
+
 from openai import OpenAI
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+import cv2
+import av
+import os
+
+import base64
+#openai_key = st.secrets["OPENAI_KEY"]
+OpenAI.api_key = st.secrets["openai_key"]
+
+#openai = OpenAI(api_key=openai_key)
+class VideoProcessor:
+  def __init__(self):
+    self.capture_frame = True
+    self.image_saved = False
+    self.image_path = ''
+
+  def recv(self, frame):
+    img = frame.to_ndarray(format="bgr24")
+
+    if self.capture_frame:
+      # Save the image
+      self.image_path = 'captured_frame.png'
+      cv2.imwrite(self.image_path, img)
+      # Reset Flags
+      self.capture_frame = False
+      self.image_saved = True
+
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+# st.set_page_config(page_title=" ")
+# st.title(' ')
+st.write("Instructions")
+st.caption(
+  """
+  1. Select your video input device. Then press the Start button to initiate the video feed. 
+  2. Click the Capture Frame button to analyze what is going on.
+  3. Click the Stop button to end the session.
+  """
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+# VIDEO PROCESSING
+RTC_CONFIGURATION = RTCConfiguration(
+  {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+)
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+video_processor = VideoProcessor()
+webrtc_ctx = webrtc_streamer(
+  key="Video", 
+  video_processor_factory=VideoProcessor, 
+  rtc_configuration=RTC_CONFIGURATION
+)
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+# CAPTURE VIDEO FRAME
+if webrtc_ctx.video_processor:
+  st.caption(
+    """Click the Capture Frame button to take a screen shot of the video and analyze what is going on."""
+  )
+  if st.button("Capture Frame"):
+    # Set a flag when the button is pressed
+    webrtc_ctx.video_processor.capture_frame = True
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+  # Display the image if it is saved
+  if webrtc_ctx.video_processor.image_saved:
+    if os.path.exists(webrtc_ctx.video_processor.image_path):
+      st.image(webrtc_ctx.video_processor.image_path)
+      st.write(webrtc_ctx.video_processor.image_path)
+      # Read the image and convert it to base64
+      with open(webrtc_ctx.video_processor.image_path, "rb") as img_file:
+        base64_image = base64.b64encode(img_file.read()).decode("utf-8")
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
-
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+      # ANALYSIS CAN BE DONE WITH VARIOUS MODELS (GROQ, OPENAI, ...)
+      # OpenAI API Send request to...
+      with st.spinner('OpenAI API Sending Request...'):
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
             messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
+                {
+                    "role": "user",
+                    "content": [
+                        "Please explain specifically what you see.",
+                        {"image": base64_image, "resize": 768},
+                    ],
+                },
             ],
-            stream=True,
+            max_tokens=500,
         )
+      # View Response
+      st.write(response.choices[0].message.content)
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+      webrtc_ctx.video_processor.image_saved = False
+    else:
+      st.write(f"Image file does not exist: {webrtc_ctx.video_processor.image_path}")
