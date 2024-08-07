@@ -31,8 +31,8 @@ class VideoProcessor:
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-# st.set_page_config(page_title="Video Frame Analysis", icon="🤖")
-# st.title('Video Frame Analysis')
+st.set_page_config(page_title="Video Frame Analysis", icon="🤖")
+st.title('Video Frame Analysis')
 st.write("Instructions")
 st.caption(
   """
