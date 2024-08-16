@@ -12,6 +12,35 @@ import base64
 openai_key = st.secrets["openai_key"]
 openai = OpenAI(api_key=openai_key)
 
+# Setting page layout
+st.set_page_config(
+    page_title="Video Frame Analysis",
+    page_icon="✨",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
+# Sidebar
+st.sidebar.header("About App")
+st.sidebar.markdown('This is an app that utilizes computer vision to analyze video frames and describe what is happening in natural language using OpenAI GPT 4o-mini model created by <a href="https://ai.jdavis.xyz" target="_blank">0xjdavis</a>.', unsafe_allow_html=True)
+
+# Calendly
+st.sidebar.markdown("""
+    <hr />
+    <center>
+    <div style="border-radius:8px;padding:8px;background:#fff";width:100%;">
+    <img src="https://avatars.githubusercontent.com/u/98430977" alt="Oxjdavis" height="100" width="100" border="0" style="border-radius:50%"/>
+    <br />
+    <span style="height:12px;width:12px;background-color:#77e0b5;border-radius:50%;display:inline-block;"></span> <b>I'm available for new projects!</b><br />
+    <a href="https://calendly.com/0xjdavis" target="_blank"><button style="background:#126ff3;color:#fff;border: 1px #126ff3 solid;border-radius:8px;padding:8px 16px;margin:10px 0">Schedule a call</button></a><br />
+    </div>
+    </center>
+    <br />
+""", unsafe_allow_html=True)
+
+# Copyright
+st.sidebar.caption("©️ Copyright 2024 J. Davis")
+
 class VideoProcessor:
   def __init__(self):
     self.capture_frame = True
@@ -31,7 +60,6 @@ class VideoProcessor:
 
     return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-st.set_page_config(page_title="Video Frame Analysis", page_icon="🤖")
 st.title('Video Frame Analysis')
 st.write("Instructions")
 st.caption(
